@@ -14,8 +14,8 @@ def get_db():
         dbname="dvdrental",
         user=os.getenv('DB_USER', "postgres"),
         password=os.getenv('DB_PASSWORD', "password"),
-        host=os.getenv('DB_PORT', 5432),
-        port=os.getenv('DB_HOST', "localhost")
+        port=os.getenv('DB_PORT', 5432),
+        host=os.getenv('DB_HOST', "db")
     )
     return conn
 
@@ -155,6 +155,8 @@ def update_table(n_clicks, category, rating):
     )
     
     return table
+
+server = app.server
 
 if __name__ == '__main__':
     app.run_server(debug=True, host='0.0.0.0', port=8050)
