@@ -1,0 +1,37 @@
+version: '3.8'
+services:
+  admin:
+    image: dpage/pgadmin4:latest
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    volumes:
+      - type: bind
+        source: ./servers.json
+        target: /pgadmin4/servers.json
+    networks:
+      - db_network
+  db:
+    build:
+      context: .
+      dockerfile: ./dockerfiles/Dockerfile-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - type: bind
+        source: ./data
+        target: /mydata
+      - type: volume
+        source: postgres_data
+        target: /var/lib/postgresql/data
+    networks:
+      - db_network
+networks:
+  db_network:
+volumes:
+  postgres_data:
+
