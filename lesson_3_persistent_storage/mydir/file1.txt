@@ -1,0 +1,1 @@
+the contents in the container have been overwritten by the bind mount
