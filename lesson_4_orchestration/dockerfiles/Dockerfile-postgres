@@ -1,6 +1,27 @@
+# Use the official PostgreSQL image as the base image
+# The `FROM` instruction specifies the base image for your Docker image.
+# PostgreSQL 15.2 is a specific version of the official PostgreSQL database image.
+# Using a specific version (15.2) rather than 'latest' ensures reproducible builds and deployments
+# Official images are maintained by Docker and the PostgreSQL team, providing security and reliability
 FROM postgres:15.2
 
+# Create a custom data directory
+# The `RUN` instruction executes commands during the image build process
+# mkdir -p creates a directory and any parent directories that don't exist
+# /mydata will be used as a custom location for storing data used to seed the PostgreSQL database.
 RUN mkdir -p /mydata
+
+# Set appropriate permissions for the data directory
+# chown -R changes the owner of the directory and all its contents
+# 999:999 corresponds to the postgres user and group IDs in the official image
+# This ensures that the PostgreSQL service has the necessary permissions to read/write data
 RUN chown -R 999:999 /mydata
 
+# Add initialization script to the container
+# The `COPY` instruction copies files from your host into the container
+# init_dvdrental_db.sh is a shell script that will initialize the DVD rental database
+# The /docker-entrypoint-initdb.d/ directory is special in the PostgreSQL image
+# Any shell scripts (.sh) or SQL files (.sql) in this directory will be automatically executed
+# when the container first starts and the database is initialized
+# This provides a way to automate database setup, schema creation, and data loading
 COPY ./init_dvdrental_db.sh /docker-entrypoint-initdb.d/init_dvdrental_db.sh

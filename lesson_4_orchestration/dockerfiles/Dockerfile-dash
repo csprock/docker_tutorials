@@ -1,14 +1,48 @@
+# Base image: Using Python 3.11 slim variant 
+# The slim variant provides a minimal Python environment with reduced image size
+# This is a balance between functionality and resource efficiency
+# Full Python images contain many development tools we don't need for production
 FROM python:3.11-slim
 
+# Create application directory
+# The `mkdir -p` command creates the directory and any necessary parent directories
+# This provides a dedicated location for our application code, keeping the container organized
+# Using a standardized directory structure is a Docker best practice
 RUN mkdir -p /app
 
+# Install system dependencies
+# apt-get update: Updates the package index to get information about the latest packages
+# apt-get install -y: Automatically answers "yes" to prompts during package installation
+# libpq-dev: Provides the PostgreSQL client library required to build psycopg2 (Python PostgreSQL adapter)
+# gcc: GNU Compiler Collection needed to compile some Python packages with C extensions
+# These dependencies are required at build-time but will remain in the final image
 RUN apt-get update && apt-get install -y libpq-dev gcc
 
+# Copy requirements file separately from the rest of the code
+# This is a Docker optimization technique that leverages layer caching
+# If requirements.txt doesn't change, this layer remains cached during rebuilds
+# Only when requirements change will Docker reinstall packages
+# This significantly speeds up the build process during development
 COPY ./requirements.txt /tmp/requirements.txt
 RUN pip install -r /tmp/requirements.txt
 
+# Copy application code into the container
+# After dependencies are installed, we copy our actual application code
+# Keeping this step after dependency installation optimizes rebuilds
+# Changes to app code won't trigger reinstallation of dependencies
 COPY ./app.py /app/app.py
 
+# Set working directory for subsequent commands
+# This changes the current directory to /app, similar to running "cd /app"
+# Any subsequent RUN, CMD, ENTRYPOINT, COPY, and ADD instructions will use this as their working directory
+# This simplifies commands by allowing relative paths instead of absolute paths
 WORKDIR /app
 
-CMD gunicorn -b 0.0.0.0:8050 app:server --timeout 90
+# Start the application using Gunicorn as the WSGI server
+# Gunicorn is a production-ready WSGI server for running Python web applications
+# -b 0.0.0.0:8050: Binds the server to all network interfaces on port 8050
+# app:server: Tells Gunicorn to use the 'server' variable from the 'app' module 
+# (Dash creates a Flask server instance that Gunicorn can use)
+# --timeout 90: Sets the worker timeout to 90 seconds (useful for longer operations)
+# The exec form of CMD (using JSON array syntax) is preferred as it doesn't invoke a shell
+CMD ["gunicorn", "-b", "0.0.0.0:8050", "app:server", "--timeout", "90"]

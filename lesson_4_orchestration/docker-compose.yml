@@ -1,45 +1,129 @@
+# Specify the Docker Compose file version
+# Version '3.8' is a recent version that supports modern Docker Compose features
+# Using a specific version ensures compatibility with Docker Engine versions
+# Each version adds new capabilities and syntax options for service definitions
 version: '3.8'
+
+# Define the services that make up our application
+# Services are the containers that will run as part of our application
+# Each service is isolated but can communicate with others through networks
 services:
+  # pgAdmin service - Web-based PostgreSQL administration tool
+  # This container provides a graphical interface to manage our database
+  # It allows users to perform database operations without command-line tools
   admin:
+    # Use the official pgAdmin 4 image directly from Docker Hub
+    # This is an example of using a pre-built image instead of building our own
+    # Using a specific image saves time as we don't need to create our own pgAdmin image
     image: dpage/pgadmin4:latest
+
+    # Map container port 80 (pgAdmin web interface) to host port 5050
+    # This makes the service accessible via http://localhost:5050 in a web browser
+    # The syntax is "HOST_PORT:CONTAINER_PORT"
     ports:
       - "5050:80"
+
+    # Configure environment variables for the pgAdmin container
+    # These variables are required for pgAdmin to function properly
+    # Using ${VARIABLE} syntax references values from the .env file in the project directory
+    # This keeps sensitive information out of the Docker Compose file
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+
+    # Configure volumes to provide configuration to pgAdmin
+    # This bind mount provides pre-configured PostgreSQL server connections
+    # The pgAdmin container expects a servers.json file to be in the /pgadmin4 directory
     volumes:
       - type: bind
         source: ./servers.json
         target: /pgadmin4/servers.json
+    
+    # Connect this container to the db_network
+    # This ensures the admin service can communicate with the database
     networks:
       - db_network
+  
+  # PostgreSQL database service
+  # This service provides the persistent data store for our application
+  # It contains the DVD rental database that our Dash application will query
   db:
+    # Build a custom PostgreSQL image using our Dockerfile
+    # Instead of using an image directly, we're building one with our customizations
     build:
+      # The build context is the directory containing files needed for building
+      # In this case, it's the current directory (where docker-compose.yml is located)
       context: .
+      # Specify the path to our custom PostgreSQL Dockerfile
       dockerfile: ./dockerfiles/Dockerfile-postgres
+
+    # Map PostgreSQL's default port (5432) to the same port on the host
+    # This allows direct connections to the database from the host system
+    # Useful for development or connecting external tools to the database
     ports:
       - "5432:5432"
+  
+    # Configure environment variables for PostgreSQL
+    # POSTGRES_PASSWORD is required by the official PostgreSQL image
+    # Value is read from the .env file to keep credentials secure
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    # Configure volumes for data persistence and initialization
+    # PostgreSQL needs persistent storage to maintain data between container restarts
+    # We're using two different volume types to meet different needs
     volumes:
+      # Bind mount for initialization data
+      # Maps the local ./data directory to /mydata in the container
+      # This provides the DVD rental database for initialization
       - type: bind
         source: ./data
         target: /mydata
+
+      # Named volume for PostgreSQL's data files
+      # This ensures database data persists even if the container is removed
+      # Using a named volume is preferred over bind mounts for database data
       - type: volume
         source: postgres_data
         target: /var/lib/postgresql/data
+
+    # Connect this service to the db_network
+    # This network connectivity is essential for the dash app to query the database
     networks:
       - db_network
   dash:
+  # Dash application service
+  # This is our custom web application for querying and displaying movie data
+  # It provides a user interface with dropdown menus to filter and view movies
     build:
+      # Build our custom Dash application image
+      # This uses our Python application code and installs necessary dependencies
       context: .
+      # Specify the path to our Dash application Dockerfile
       dockerfile: ./dockerfiles/Dockerfile-dash
+
+    # Map container port 8050 (Dash default) to host port 8050
+    # This makes the web application accessible via http://localhost:8050
     ports:
       - "8050:8050"
+
+    # Connect to the db_network
+    # This allows our Dash application to communicate with the PostgreSQL database
+    # Without this network connection, the application couldn't query for movie data
     networks:
       - db_network
+
+# Define custom networks used by our services
+# Networks isolate container communication for better security and organization
 networks:
+  # db_network connects all three services
+  # This ensures the Dash app can query the database and pgAdmin can manage it
+  # By default, this creates a bridge network (standard for container communication)
   db_network:
+
+# Define named volumes used by our services
 volumes:
+  # postgres_data volume stores PostgreSQL database files
+  # This ensures data persists across container restarts and rebuilds
   postgres_data:
 
